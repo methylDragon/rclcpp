@@ -60,6 +60,12 @@ namespace experimental
 class IntraProcessManager;
 }  // namespace experimental
 
+/**
+ * SubscriptionOptionsBase is forward declared here, avoiding a circular inclusion between
+ * `subscription_options.hpp` and `subscription_base.hpp`.
+ */
+struct SubscriptionOptionsBase;
+
 /// Virtual base class for subscriptions. This pattern allows us to iterate over different template
 /// specializations of Subscription, among other things.
 class SubscriptionBase : public std::enable_shared_from_this<SubscriptionBase>
@@ -83,7 +89,8 @@ public:
     rclcpp::node_interfaces::NodeBaseInterface * node_base,
     const rosidl_message_type_support_t & type_support_handle,
     const std::string & topic_name,
-    const rcl_subscription_options_t & subscription_options,
+    const SubscriptionOptionsBase & subscription_options,
+    const QoS & qos,
     bool is_serialized = false);
 
   /// Destructor.

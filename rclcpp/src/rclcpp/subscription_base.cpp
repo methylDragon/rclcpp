@@ -28,6 +28,7 @@
 #include "rclcpp/logging.hpp"
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
 #include "rclcpp/qos_event.hpp"
+#include "rclcpp/subscription_options.hpp"
 
 #include "rmw/error_handling.h"
 #include "rmw/rmw.h"
@@ -38,7 +39,8 @@ SubscriptionBase::SubscriptionBase(
   rclcpp::node_interfaces::NodeBaseInterface * node_base,
   const rosidl_message_type_support_t & type_support_handle,
   const std::string & topic_name,
-  const rcl_subscription_options_t & subscription_options,
+  const SubscriptionOptionsBase & subscription_options,
+  const QoS & qos,
   bool is_serialized)
 : node_base_(node_base),
   node_handle_(node_base_->get_shared_rcl_node_handle()),
@@ -69,7 +71,7 @@ SubscriptionBase::SubscriptionBase(
     node_handle_.get(),
     &type_support_handle,
     topic_name.c_str(),
-    &subscription_options);
+    &subscription_options.to_rcl_subscription_options(qos));
   if (ret != RCL_RET_OK) {
     if (ret == RCL_RET_TOPIC_NAME_INVALID) {
       auto rcl_node_handle = node_handle_.get();
@@ -82,6 +84,38 @@ SubscriptionBase::SubscriptionBase(
     }
 
     rclcpp::exceptions::throw_from_rcl_error(ret, "could not create subscription");
+  }
+
+  if (subscription_options.event_callbacks.deadline_callback) {
+    this->add_event_handler(
+      subscription_options.event_callbacks.deadline_callback,
+      RCL_SUBSCRIPTION_REQUESTED_DEADLINE_MISSED);
+  }
+  if (subscription_options.event_callbacks.liveliness_callback) {
+    this->add_event_handler(
+      subscription_options.event_callbacks.liveliness_callback,
+      RCL_SUBSCRIPTION_LIVELINESS_CHANGED);
+  }
+  if (subscription_options.event_callbacks.incompatible_qos_callback) {
+    this->add_event_handler(
+      subscription_options.event_callbacks.incompatible_qos_callback,
+      RCL_SUBSCRIPTION_REQUESTED_INCOMPATIBLE_QOS);
+  } else if (subscription_options.use_default_callbacks) {
+    // Register default callback when not specified
+    try {
+      this->add_event_handler(
+        [this](QOSRequestedIncompatibleQoSInfo & info) {
+          this->default_incompatible_qos_callback(info);
+        },
+        RCL_SUBSCRIPTION_REQUESTED_INCOMPATIBLE_QOS);
+    } catch (UnsupportedEventTypeException & /*exc*/) {
+      // pass
+    }
+  }
+  if (subscription_options.event_callbacks.message_lost_callback) {
+    this->add_event_handler(
+      subscription_options.event_callbacks.message_lost_callback,
+      RCL_SUBSCRIPTION_MESSAGE_LOST);
   }
 }
 
