@@ -99,7 +99,7 @@ struct NodeInterfacesSupportCheck<StorageClassT, NextInterfaceT, RemainingInterf
 {
   static_assert(
     NodeInterfacesSupports<StorageClassT, NextInterfaceT>::is_supported::value,
-    "given NodeInterfaceT is not support by rclcpp::node_interfaces::NodeInterfaces");
+    "given NodeInterfaceT is not supported by rclcpp::node_interfaces::NodeInterfaces");
 };
 
 /// Terminating case when there are no more "RemainingInterfaceTs".
